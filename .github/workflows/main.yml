@@ -16,6 +16,7 @@ jobs:
           if [ -z "$F" ]; then echo "NO SE ENCONTRO settings.gradle"; find work -type f | head -50; exit 1; fi
           echo "Proyecto en: $F"
           echo "PROJ=$(dirname "$F")" >> $GITHUB_ENV
+          if [ -f juego.html ]; then cp juego.html "$(dirname "$F")/app/src/main/assets/index.html"; echo "Usando juego.html del repositorio"; fi
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -28,6 +29,10 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Usar llave de firma fija
+        run: |
+          mkdir -p ~/.android
+          if [ -f debug.keystore ]; then cp debug.keystore ~/.android/debug.keystore; echo "Llave fija en uso"; else echo "Sin debug.keystore: se usara una llave nueva"; fi
       - name: Compilar APK
         working-directory: ${{ env.PROJ }}
         run: gradle assembleDebug
