@@ -9,16 +9,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Descomprimir y localizar proyecto
         run: |
-          echo "=== ARCHIVOS EN EL REPO ==="
-          find . -not -path './.git/*' -type f | head -40
-          for z in $(find . -name '*.zip' -not -path './.git/*'); do
-            echo "Descomprimiendo $z"
-            unzip -q -o "$z" -d extraido || true
-          done
-          echo "=== DESPUES DE DESCOMPRIMIR ==="
-          find . -not -path './.git/*' -type f | head -60
-          F=$(find . \( -name settings.gradle -o -name settings.gradle.kts \) -not -path './.git/*' | head -1)
-          if [ -z "$F" ]; then echo "NO SE ENCONTRO settings.gradle"; exit 1; fi
+          mkdir -p work
+          for z in $(find . -maxdepth 1 -name '*.zip'); do unzip -q -o "$z" -d work; done
+          for z in $(find work -name '*.zip'); do unzip -q -o "$z" -d work/interno; done
+          F=$(find work -name settings.gradle | head -1)
+          if [ -z "$F" ]; then echo "NO SE ENCONTRO settings.gradle"; find work -type f | head -50; exit 1; fi
           echo "Proyecto en: $F"
           echo "PROJ=$(dirname "$F")" >> $GITHUB_ENV
       - uses: actions/setup-java@v4
