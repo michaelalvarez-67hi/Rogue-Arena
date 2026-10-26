@@ -7,8 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Descomprimir proyecto
-        run: unzip -q *.zip
+      - name: Descomprimir y localizar proyecto
+        run: |
+          unzip -q -o "$(find . -name '*.zip' -not -path './.git/*' | head -1)"
+          F=$(find . -name settings.gradle -not -path './.git/*' | head -1)
+          echo "Proyecto en: $F"
+          echo "PROJ=$(dirname "$F")" >> $GITHUB_ENV
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -22,10 +26,10 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Compilar APK
-        working-directory: RogueArenaAndroid
+        working-directory: ${{ env.PROJ }}
         run: gradle assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: Rogue-Arena-APK
-          path: RogueArenaAndroid/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROJ }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
