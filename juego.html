@@ -888,7 +888,7 @@ addEventListener('resize',resize);
    Esta primera versión conecta dos APK en la misma Wi-Fi y sincroniza
    la posición/skin del otro jugador. La lógica de enemigos y daño sigue
    siendo local; el combate cooperativo sincronizado es una fase posterior. */
-let lanConnected=false,lanStatus='Desconectado',lanRemote=null,lanLastSeen=0,lanLastSend=0;
+let lanConnected=false,lanIsHost=false,lanStatus='Desconectado',lanRemote=null,lanLastSeen=0,lanLastSend=0;
 function showLAN(){
   const ip=(window.RogueLAN&&window.RogueLAN.getLocalIp)?window.RogueLAN.getLocalIp():'Solo disponible en el APK';
   show(`<div class="pn"><h2 style="color:#5df6ff">📶 ROGUE LAN</h2>
@@ -899,7 +899,8 @@ function showLAN(){
     <input id="lan-ip" class="laninput" inputmode="decimal" placeholder="Ej. 192.168.1.25" maxlength="45">
     <button class="b" onclick="lanJoin()">UNIRSE A PARTIDA</button>
     <div id="lan-status" class="st">${lanStatus}</div>
-    <div class="st" style="font-size:11px">Prototipo: permite ver al otro jugador. Los enemigos y el combate aún no están sincronizados.</div>
+    <button class="b p" onclick="lanStartShared()">▶ INICIAR PARTIDA PARA AMBOS</button>
+    <div class="st" style="font-size:11px">El anfitrión inicia para ambos. Esta versión sincroniza el inicio y la posición; enemigos, daño y combate siguen siendo locales.</div>
     <button class="b d" onclick="lanDisconnect();showMenu()">DESCONECTAR Y VOLVER</button>
   </div>`);
 }
@@ -910,6 +911,7 @@ function lanSetStatus(text,connected){
 }
 function lanHost(){
   if(!window.RogueLAN){lanSetStatus('Esta función requiere el APK actualizado.');return}
+  lanIsHost=true;
   lanSetStatus('Abriendo sala…');
   try{window.RogueLAN.startHost()}catch(e){lanSetStatus('No se pudo iniciar: '+e.message,false)}
 }
@@ -917,11 +919,20 @@ function lanJoin(){
   if(!window.RogueLAN){lanSetStatus('Esta función requiere el APK actualizado.');return}
   const ip=(document.getElementById('lan-ip')||{}).value||'';
   if(!ip.trim()){lanSetStatus('Escribe la IP del dispositivo anfitrión.');return}
+  lanIsHost=false;
   lanSetStatus('Conectando con '+ip.trim()+'…');
   try{window.RogueLAN.connectToHost(ip.trim())}catch(e){lanSetStatus('No se pudo conectar: '+e.message,false)}
 }
+function lanStartShared(){
+  if(!lanIsHost){lanSetStatus('Solo el anfitrión puede iniciar la partida.');return}
+  if(!lanConnected||!window.RogueLAN){lanSetStatus('Espera a que el otro jugador se conecte.');return}
+  try{
+    window.RogueLAN.sendMessage(JSON.stringify({type:'start'}));
+    startGame();
+  }catch(e){lanSetStatus('No se pudo iniciar: '+e.message,false)}
+}
 function lanDisconnect(){
-  lanConnected=false;lanRemote=null;lanLastSeen=0;
+  lanConnected=false;lanIsHost=false;lanRemote=null;lanLastSeen=0;
   if(window.RogueLAN)try{window.RogueLAN.disconnect()}catch(e){}
   lanSetStatus('Desconectado',false);
 }
@@ -932,9 +943,12 @@ window.onRogueLANMessage=function(raw){
     if(m.connected)lanConnected=true;
     return;
   }
+  if(m.type==='start'){
+    if(lanConnected&&scene==='menu')startGame();
+    return;
+  }
   if(m.type==='player'){
     lanRemote=m;lanLastSeen=performance.now();
-    if(m.playing&&scene==='menu'&&lanConnected){/* cada jugador inicia su partida localmente */}
   }
 };
 setInterval(()=>{
