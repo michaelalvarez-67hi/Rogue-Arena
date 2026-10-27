@@ -59,6 +59,9 @@ h2{margin:0;font-size:clamp(23px,7vw,31px);font-weight:950;letter-spacing:1px;co
 .lv b{display:block;font-size:14px;letter-spacing:.2px;margin-bottom:4px}.lv span{font-size:11px;line-height:1.4;color:#bfc9e8}.lv.on{background:linear-gradient(110deg,#243257,#1b1538);box-shadow:inset 0 0 0 1px #5df6ff22,0 0 18px #5df6ff10}.lv.lk{opacity:.48}
 .sk{display:flex;align-items:center;gap:9px;width:min(86vw,370px);background:linear-gradient(115deg,#171b35,#101224);border:1px solid #ffffff12;border-radius:15px;padding:8px 10px;box-sizing:border-box;box-shadow:inset 0 1px 0 #ffffff08}
 .sk.on{border-color:#ffd36a;box-shadow:inset 0 0 0 1px #ffd36a22,0 0 18px #ffd36a0c}
+.colorPick{width:38px;height:34px;padding:2px;border:1px solid #5df6ff66;border-radius:8px;background:#080c1b;flex:none}
+.accountBox{display:flex;flex-direction:column;gap:9px;width:100%;padding:12px;border:1px solid #a66bff55;border-radius:14px;background:#0c1024}
+
 .sk canvas{width:64px;height:64px;flex:none;border-radius:12px;background:radial-gradient(circle,#5df6ff12,transparent 70%)}
 .si{flex:1;text-align:left;min-width:0}.si b{display:block;font-size:13px;color:#fff;margin-bottom:3px}.si span{font-size:11px;color:#a9e7f3;line-height:1.35}
 .bt{background:linear-gradient(110deg,#80fbff,#45dce9);color:#07111b;border:0;border-radius:10px;padding:10px 12px;font-size:11px;font-weight:950;white-space:nowrap;box-shadow:0 3px 0 #1a6a86}
@@ -83,6 +86,11 @@ h2{margin:0;font-size:clamp(23px,7vw,31px);font-weight:950;letter-spacing:1px;co
 @keyframes nxPulse{from{box-shadow:0 0 9px #5df6ff45,inset 0 0 10px #5df6ff0c}to{box-shadow:0 0 24px #5df6ff9c,inset 0 0 22px #5df6ff20}}
 @keyframes nxLoad{from{transform:translateX(-5px)}to{transform:translateX(85px)}}
 @media(prefers-reduced-motion:reduce){#nexusSplash,.nx-mark,.nx-loading:after{animation:none;transition:none}}
+
+
+.lanbox{width:100%;padding:12px;border:1px solid #5df6ff45;border-radius:14px;background:#070b19}
+.lanbox .st{font-size:12px;margin:6px 0}
+.laninput{width:100%;padding:13px;border-radius:11px;border:1px solid #5df6ff66;background:#050914;color:#fff;font-size:16px;text-align:center;outline:none}
 
 </style>
 </head>
@@ -135,12 +143,16 @@ const UPG=[
   {n:'Onda Sísmica',d:'Al esquivar lanzas una onda de 30 de daño',f:()=>{P.wave+=30}},
   {n:'Fantasma',d:'La esquiva dura 30% más (más invulnerable)',f:()=>{P.dodgeX*=1.3}},
   {n:'Armadura',d:'Recibes 10% menos de daño',f:()=>{P.armor=Math.min(.6,P.armor+.1)}},
-  {n:'Furia',d:'Con menos del 40% de vida haces +50% de daño',f:()=>{P.rage=true}}
+  {n:'Furia',d:'Con menos del 40% de vida haces +50% de daño',f:()=>{P.rage=true}},
+  {n:'Núcleo Infernal',d:'El fuego quema más y alcanza más enemigos',f:()=>{P.aura+=8;P.auraR+=18}},
+  {n:'Pulso Sísmico+',d:'La onda al esquivar hace más daño y empuja',f:()=>{P.wave+=25;P.wavePush=(P.wavePush||0)+90}},
+  {n:'Cadena Eléctrica',d:'Cada 4 golpes lanza un arco a otro enemigo',f:()=>{P.chain=(P.chain||0)+1}},
+  {n:'Fragmentos',d:'Cada esquiva dispara fragmentos a enemigos cercanos',f:()=>{P.fragments=(P.fragments||0)+2}}
 ];
 
 /* ================= GUARDADO ================= */
 const KEY='rogue_arena_v1';
-const save={coins:0,bestWave:0,bestScore:0,st:[0,0,0,0,0,0,0,0,0,0],own:[0],skin:0,codes:[],dev:false,god:false};
+const save={coins:0,bestWave:0,bestScore:0,st:[0,0,0,0,0,0,0,0,0,0],own:[0],skin:0,skinColors:{},email:'',codes:[],dev:false,god:false};
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object'){save.coins=+s.coins||0;save.bestWave=+s.bestWave||0;save.bestScore=+s.bestScore||0}}catch(e){}}
 function store(){try{localStorage.setItem(KEY,JSON.stringify(save))}catch(e){}}
 function bank(){ // acredita monedas una sola vez (idempotente)
@@ -195,7 +207,7 @@ function pickType(){const w=run.wave,r=Math.random();if(w>=3&&r<.2)return'tank';
 function spawnEnemy(t,x,y){
   const d=ET[t],k=hpK(),dk=dmgK();
   const e={t,x,y,hp:d.hp*k,max:d.hp*k,spd:d.spd*(1+.015*run.wave+.012*(run.L-1)),dmg:d.dmg*dk,r:d.r*U,xp:d.xp*(1+.1*(run.L-1)+.03*(run.stg-1)),coin:d.coin*(1+.3*(run.L-1)+.1*(run.stg-1)),col:d.col,cd:.5,flash:0,kx:0,ky:0,ph:Math.random()*6,dead:false,hitD:-1,a:0,aiT:1.1+Math.random()*1.2,dashWind:0,dashTime:0,dashX:0,dashY:0};
-  enemies.push(e);return e;
+  e.baseSpd=e.spd;e.baseDmg=e.dmg;enemies.push(e);return e;
 }
 function edgePos(){
   for(let i=0;i<8;i++){
@@ -205,9 +217,22 @@ function edgePos(){
   }
   return[P.x<W/2?W+22:-22,Math.random()*H];
 }
+const BOSS=[
+ {n:'Señor del Neón',c:'#ff2bd6',hp:1,spd:1,style:0},
+ {n:'Bestia Espectral',c:'#4cff7c',hp:1.12,spd:1.12,style:1},
+ {n:'Coloso de Ceniza',c:'#ffb347',hp:1.28,spd:.88,style:2},
+ {n:'Reina Glacial',c:'#8fe3ff',hp:1.15,spd:1.18,style:3},
+ {n:'Hidra Tóxica',c:'#a6ff3d',hp:1.3,spd:1.05,style:4},
+ {n:'Titán Carmesí',c:'#ff4d2e',hp:1.45,spd:1.12,style:5},
+ {n:'Devorador Violeta',c:'#b44bff',hp:1.35,spd:1.35,style:6},
+ {n:'Núcleo Mecánico',c:'#ffd23f',hp:1.55,spd:1.0,style:7},
+ {n:'Soberano del Vacío',c:'#ff2bd6',hp:1.7,spd:1.25,style:8},
+ {n:'Abismo Eterno',c:'#ff0033',hp:2,spd:1.3,style:9}
+];
 function spawnBoss(){
-  const n=bp(),e=spawnEnemy('boss',W/2,-40*U);
-  e.hp=e.max=ET.boss.hp*hpK()*.9;e.dmg=ET.boss.dmg*dmgK();e.mode=0;e.at=2;e.step=0;e.mt=0;
+  const n=bp(),e=spawnEnemy('boss',W/2,-40*U),boss=BOSS[(run.L||1)-1]||BOSS[0];
+  e.bossName=boss.n;e.bossStyle=boss.style;e.col=boss.c;e.spd*=boss.spd;
+  e.hp=e.max=ET.boss.hp*hpK()*.9*boss.hp;e.dmg=ET.boss.dmg*dmgK()*(1+boss.style*.055);e.mode=0;e.at=2;e.step=0;e.mt=0;
   run.boss=e;
 }
 function waveLogic(dt){
@@ -234,6 +259,8 @@ function killEnemy(e,quiet){
   if(quiet)return;
   run.coins+=Math.max(1,Math.round(e.coin*run.cm));run.score+=Math.round(e.xp*10);run.kills++;if(P.leech&&!P.dead)P.hp=Math.min(P.max,P.hp+P.leech);
   run.xp+=e.xp*run.xpm;
+   // The pale-purple orbit enemy grows more aggressive as the arena loses enemies.
+   for(const o of enemies)if(!o.dead&&o.t==='orbiter'){o.spd=Math.min(o.baseSpd*2.25,o.spd*1.025);o.dmg=Math.min(o.baseDmg*2.5,o.dmg*1.035)}
   while(run.xp>=CFG.xpNeed(run.lvl)){run.xp-=CFG.xpNeed(run.lvl);run.lvl++;run.pend++}
   if(e.t==='splitter'){
     for(let i=0;i<2;i++){const a=i*Math.PI+Math.random()*.5,child=spawnEnemy('shard',e.x+Math.cos(a)*e.r,e.y+Math.sin(a)*e.r);child.hp=child.max=ET.shard.hp*(1+.12*(run.L-1));child.r=ET.shard.r*U}
@@ -258,7 +285,8 @@ function doDodge(){
   if(scene!=='play'||paused||P.dead||P.dodgeCdT>0||P.dodgeT>0)return;
   const l=Math.hypot(P.mx,P.my);
   P.dvx=l>.1?P.mx/l:P.dx;P.dvy=l>.1?P.my/l:P.dy;
-  P.dodgeT=CFG.player.dodgeT*P.dodgeX;P.dodgeCdT=P.dodgeCd;P.inv=Math.max(P.inv,P.dodgeT+.08);P.dodgeId++;if(P.wave>0)for(const e of enemies)if(!e.dead&&Math.hypot(e.x-P.x,e.y-P.y)<110*U)hitEnemy(e,P.wave,Math.atan2(e.y-P.y,e.x-P.x),320);
+  P.dodgeT=CFG.player.dodgeT*P.dodgeX;P.dodgeCdT=P.dodgeCd;P.inv=Math.max(P.inv,P.dodgeT+.08);P.dodgeId++;if(P.wave>0)for(const e of enemies)if(!e.dead&&Math.hypot(e.x-P.x,e.y-P.y)<125*U){const a=Math.atan2(e.y-P.y,e.x-P.x);hitEnemy(e,P.wave,a,320);e.kx+=Math.cos(a)*(P.wavePush||120)*U;e.ky+=Math.sin(a)*(P.wavePush||120)*U}
+   if(P.fragments>0){for(const e of enemies){if(e.dead||Math.hypot(e.x-P.x,e.y-P.y)>230*U)continue;hitEnemy(e,7*P.fragments,Math.atan2(e.y-P.y,e.x-P.x),100)}}
   burst(P.x,P.y,'#35e7ff',10,120);
 }
 function playerAttack(dt){
@@ -314,7 +342,7 @@ function updateEnemies(dt){
     const e=enemies[i];if(e.dead)continue;
     e.cd-=dt;e.flash-=dt;e.ph+=dt*6;
     const dx=P.x-e.x,dy=P.y-e.y,d=Math.hypot(dx,dy)||1;e.a=Math.atan2(dy,dx);
-    if(P.aura>0&&!P.dead&&d<P.auraR*U+e.r){e.hp-=P.aura*dt;e.flash=Math.max(e.flash,.03);if(e.hp<=0){killEnemy(e,false);continue}}
+    if(P.aura>0&&!P.dead&&d<P.auraR*U+e.r){e.hp-=P.aura*dt;e.flash=Math.max(e.flash,.03);if(Math.random()<dt*3)burst(e.x,e.y,'#ff7a1a',1,35);if(e.hp<=0){killEnemy(e,false);continue}}
     let sp=e.spd*U,mx=dx/d,my=dy/d;
     if(e.t==='boss')sp=bossAI(e,dt,sp);
     else if(!P.dead&&e.t==='shooter'){
@@ -420,7 +448,7 @@ function show(h){ui.innerHTML=h}
 function hide(){ui.innerHTML=''}
 function showMenu(){
   scene='menu';paused=false;
-  show(`<div class="pn"><h1>ROGUE<br>ARENA</h1><div class="st">● ${save.coins} monedas</div><div class="st">Récord: oleada ${save.bestWave} · ${save.bestScore} pts</div><button class="b p" onclick="startGame()">JUGAR</button><button class="b d" id="rs" onclick="resetSave()">REINICIAR PROGRESO</button></div>`);
+  show(`<div class="pn"><h1>ROGUE<br>ARENA</h1><div class="st">● ${save.coins} monedas</div><div class="st">Récord: oleada ${save.bestWave} · ${save.bestScore} pts</div><button class="b p" onclick="startGame()">JUGAR</button><button class="b" onclick="showLAN()">📶 MULTIJUGADOR LAN<small>Experimental · misma red Wi-Fi</small></button><button class="b d" id="rs" onclick="resetSave()">REINICIAR PROGRESO</button></div>`);
 }
 let armed=false;
 function resetSave(){
@@ -554,7 +582,8 @@ function drawEnemy(e){
   }else if(e.t==='shard'){
     c.save();c.translate(x,y);c.rotate(e.ph*.4);c.fillStyle=col;c.beginPath();c.moveTo(0,-r*1.3);c.lineTo(r*.85,0);c.lineTo(0,r*1.3);c.lineTo(-r*.85,0);c.closePath();c.fill();c.strokeStyle='#fff';c.lineWidth=1*U;c.stroke();c.restore();
   }else{
-    if(e.mode===2){c.strokeStyle='#ffd23f';c.lineWidth=3*U;c.beginPath();c.arc(x,y,r*(1.3+(1-e.mt/.9)*.9),0,6.283);c.stroke()}
+    if(e.bossStyle>0){c.save();c.strokeStyle=e.col;c.globalAlpha=.8;c.lineWidth=(1+e.bossStyle%3)*U;c.beginPath();c.ellipse(x,y,r*(1.45+e.bossStyle*.025),r*(.55+e.bossStyle*.035),time*.2,0,6.283);c.stroke();c.restore()}
+     if(e.mode===2){c.strokeStyle='#ffd23f';c.lineWidth=3*U;c.beginPath();c.arc(x,y,r*(1.3+(1-e.mt/.9)*.9),0,6.283);c.stroke()}
     if(e.mode===1){c.fillStyle='rgba(255,43,214,'+(.2+.2*Math.sin(time*20))+')';circ(x,y,r*1.5)}
     c.fillStyle=col;star(x,y+w,r*1.25,r*.85,10,e.ph*.05);c.fill();
     c.strokeStyle='#ffd23f';c.lineWidth=2*U;c.stroke();
@@ -595,7 +624,7 @@ function draw(){
     c.strokeStyle='#ff2bd6';c.lineWidth=2*U;c.beginPath();c.arc(z.x,z.y,z.r,0,6.283);c.stroke();
   }
   for(const e of enemies)drawEnemy(e);
-  drawPlayer();
+  drawPlayer();drawLanPlayer();
   for(const b of bolts){const bc=b.c||'#ffd23f';c.save();c.shadowColor=bc;c.shadowBlur=9*U;c.globalAlpha=.3;c.fillStyle=bc;circ(b.x,b.y,b.r*2.1);c.globalAlpha=1;c.fillStyle=bc;circ(b.x,b.y,b.r);c.restore()}
   for(const s of sa){if(!s.on)continue;c.globalAlpha=s.l/.16;c.strokeStyle='#e9f6ff';c.lineWidth=5*U;c.beginPath();c.arc(s.x,s.y,Math.min(s.r*.8,70*U),s.a-.7,s.a+.7);c.stroke()}
   for(const p of pa){if(!p.on)continue;c.globalAlpha=p.l/p.m;c.fillStyle=p.c;c.beginPath();c.arc(p.x,p.y,p.s*.55,0,6.283);c.fill()}
@@ -626,13 +655,13 @@ const SK=[
 {n:'Dragón Infernal',p:15000,t:'+20% daño, ataque 15% más rápido',c:'#7a1d0a',h:'#ff7a1a',a:'#ff4500',sw:'#ffd23f',d:'dragon',perk:{dmg:.2,atk:.15}},
 {n:'Dios Eclipse',p:30000,t:'+15% daño, +10% vel., +30 vida, +25% monedas',c:'#0b0614',h:'#1a1030',a:'#ffd23f',sw:'#ffd23f',e:'#ffd23f',d:'eclipse',perk:{dmg:.15,spd:.1,hp:30,coin:.25}}
 ];
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object'){save.coins=+s.coins||0;save.bestWave=+s.bestWave||0;save.bestScore=+s.bestScore||0;if(Array.isArray(s.st))for(let i=0;i<10;i++)save.st[i]=+s.st[i]||0;if(Array.isArray(s.own))save.own=s.own.filter(x=>Number.isInteger(x)&&x>=0&&x<SK.length);if(!save.own.includes(0))save.own.push(0);save.skin=save.own.includes(s.skin)?s.skin:0;if(Array.isArray(s.codes))save.codes=s.codes.filter(x=>typeof x==='string');save.dev=!!s.dev;save.god=!!s.god}}catch(e){}}
-function wipe(){save.coins=0;save.bestWave=0;save.bestScore=0;save.st=[0,0,0,0,0,0,0,0,0,0];save.own=[0];save.skin=0;save.codes=[];save.dev=false;save.god=false;curL=1;store()}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&typeof s==='object'){save.coins=+s.coins||0;save.bestWave=+s.bestWave||0;save.bestScore=+s.bestScore||0;if(Array.isArray(s.st))for(let i=0;i<10;i++)save.st[i]=+s.st[i]||0;if(Array.isArray(s.own))save.own=s.own.filter(x=>Number.isInteger(x)&&x>=0&&x<SK.length);if(!save.own.includes(0))save.own.push(0);save.skin=save.own.includes(s.skin)?s.skin:0;if(Array.isArray(s.codes))save.codes=s.codes.filter(x=>typeof x==='string');save.dev=!!s.dev;save.god=!!s.god;save.email=typeof s.email==='string'?s.email:'';save.skinColors=s.skinColors&&typeof s.skinColors==='object'?s.skinColors:{}}}catch(e){}}
+function wipe(){save.coins=0;save.bestWave=0;save.bestScore=0;save.st=[0,0,0,0,0,0,0,0,0,0];save.own=[0];save.skin=0;save.skinColors={};save.email='';save.codes=[];save.dev=false;save.god=false;curL=1;store()}
 function applySkin(){const p=SK[save.skin].perk;P.dmg*=1+(p.dmg||0);P.spd*=1+(p.spd||0);P.max+=p.hp||0;P.hp=P.max;P.range*=1+(p.range||0);P.atkCd/=1+(p.atk||0);P.dodgeCd*=1-(p.dodge||0);P.shield+=p.shield||0;run.xpm=1+(p.xp||0);run.cm=1+(p.coin||0)}
 function newRun(){
   if(!unlocked(curL))curL=1;
   newRunBase();
-  Object.assign(P,{crit:0,leech:0,aura:0,auraR:62,multi:0,regen:0,regT:0,regHp:0,wave:0,dodgeX:1,armor:0,rage:false});
+  Object.assign(P,{crit:0,leech:0,aura:0,auraR:62,multi:0,regen:0,regT:0,regHp:0,wave:0,wavePush:0,chain:0,chainHits:0,fragments:0,dodgeX:1,armor:0,rage:false});
   const n=stagesOf(curL),c=save.st[curL-1];
   run.L=curL;run.stg=c>=n?1:c+1;run.WPS=wavesOf(curL);
   applySkin();
@@ -660,7 +689,7 @@ function startWave(){
   run.isBoss=b;run.state='fight';run.spT=.4;
   run.queue=Math.min(L===10?80:60,Math.round((b?Math.floor(w/2)+2+L:4+w*2+Math.floor(w*w/6))*(1+.06*(L-1)+.03*(run.stg-1))));
   if(b)spawnBoss();
-  banner(b?'¡JEFE!':'Etapa '+run.stg+' · Oleada '+w);
+  banner(b?('¡JEFE: '+((BOSS[(L||1)-1]||BOSS[0]).n)+'!'):'Etapa '+run.stg+' · Oleada '+w);
 }
 function playerAttack(dt){
   P.atkT-=dt;if(P.atkT>0||P.dodgeT>0)return;
@@ -683,7 +712,16 @@ function showWin(){
 }
 function contWin(){if(scene!=='win')return;hide();run.stg++;run.wave=0;run.boss=null;run.queue=0;enemies.length=0;bolts.length=0;zones.length=0;P.hp=Math.min(P.max,P.hp+P.max*.5);scene='play';startRest()}
 function nextLevel(){if(scene!=='win')return;curL=Math.min(10,run.L+1);startGame()}
-function show(h){ui.innerHTML=h;heroCtx=null}
+function show(h){
+  const old=document.querySelector('#ui .pn');
+  const oldTitle=old?.querySelector('h1,h2')?.textContent?.trim()||'';
+  const oldScroll=old?.scrollTop||0;
+  ui.innerHTML=h;heroCtx=null;
+  const next=document.querySelector('#ui .pn');
+  const nextTitle=next?.querySelector('h1,h2')?.textContent?.trim()||'';
+  // If an action redraws the same scrollable menu, keep its scroll position.
+  if(old&&next&&oldTitle&&oldTitle===nextTitle)requestAnimationFrame(()=>{next.scrollTop=oldScroll});
+}
 function drawHero(c,x,y,r,s,o){
   const a0=c.globalAlpha,bob=o.bob||0,dx=o.dx||0,T=o.t||0,fl=o.flash,hy=y-r*.35+bob,ey=s.e||'#fff';
   c.save();c.shadowColor=s.a;c.shadowBlur=12;
@@ -729,13 +767,15 @@ function drawPlayer(){
   if(P.aura>0){ctx.globalAlpha=al*(.12+.05*Math.sin(time*8));ctx.fillStyle='#ff7a1a';ctx.beginPath();ctx.arc(P.x,P.y,P.auraR*U,0,6.283);ctx.fill();ctx.globalAlpha=al}
   if(P.inv>0&&!P.dead&&((time*30)|0)%2)ctx.globalAlpha=al*.45;
   const sa=P.atkAnim>0?P.ang+(P.atkAnim/.18-.5)*1.8:Math.atan2(P.dy,P.dx)+1.2;
-  drawHero(ctx,P.x,P.y,r,SK[save.skin],{dx:P.dx,bob:Math.sin(P.walk)*r*.12,sa,flash:P.flash>0,shield:P.shield>0,t:time});
+  const heroSkin={...SK[save.skin]};
+  if(save.skinColors&&save.skinColors[save.skin]){heroSkin.a=save.skinColors[save.skin];heroSkin.h=save.skinColors[save.skin];heroSkin.c=save.skinColors[save.skin];}
+  drawHero(ctx,P.x,P.y,r,heroSkin,{dx:P.dx,bob:Math.sin(P.walk)*r*.12,sa,flash:P.flash>0,shield:P.shield>0,t:time});
   ctx.globalAlpha=1;
 }
 function showMenu(){
   scene='menu';paused=false;
   const L=curL,n=stagesOf(L),c=save.st[L-1],stg=c>=n?1:c+1,s=SK[save.skin];
-  show(`<div class='pn' style='width:min(92vw,410px)'><div class='row'><span class='pill'>◈ ${save.coins} MONEDAS</span><span class='pill' style='color:#ffd36a'>✦ RÉCORD ${save.bestScore}</span></div><h1>ROGUE<br>ARENA</h1><div class='st' style='letter-spacing:3px;font-size:10px;color:#6deaf5;font-weight:900'>SURVIVE THE ARENA</div><canvas id='hc' width='120' height='120'></canvas><div class='st'><b style='color:${s.a}'>${s.n}</b> <span style='opacity:.5'>/</span> ${s.t}</div><button class='b p big' onclick='startGame()'>▶ INICIAR PARTIDA<small>${LV[L-1].n} · ETAPA ${stg}/${n}</small></button><div class='tl'><button class='tile' onclick='showLevels()'>⌘<span>NIVELES</span></button><button class='tile' onclick='showSkins()'>✧<span>ASPECTOS</span></button><button class='tile' onclick='showCodes()'>⌁<span>CÓDIGOS</span></button>${save.dev?`<button class='tile' onclick='showDev()'>⚙<span>DEV</span></button>`:''}</div><button class='b d' id='rs' onclick='resetSave()'>REINICIAR PROGRESO</button></div>`);
+  show(`<div class='pn' style='width:min(92vw,410px)'><div class='row'><span class='pill'>◈ ${save.coins} MONEDAS</span><span class='pill' style='color:#ffd36a'>✦ RÉCORD ${save.bestScore}</span></div><h1>ROGUE<br>ARENA</h1><div class='st' style='letter-spacing:3px;font-size:10px;color:#6deaf5;font-weight:900'>SURVIVE THE ARENA</div><canvas id='hc' width='120' height='120'></canvas><div class='st'><b style='color:${s.a}'>${s.n}</b> <span style='opacity:.5'>/</span> ${s.t}</div><button class='b p big' onclick='startGame()'>▶ INICIAR PARTIDA<small>${LV[L-1].n} · ETAPA ${stg}/${n}</small></button><div class='tl'><button class='tile' onclick='showLevels()'>⌘<span>NIVELES</span></button><button class='tile' onclick='showSkins()'>✧<span>ASPECTOS</span></button><button class='tile' onclick='showCodes()'>⌁<span>CÓDIGOS</span></button><button class='tile' onclick='showAccount()'>◎<span>CUENTA</span></button>${save.dev?`<button class='tile' onclick='showDev()'>⚙<span>DEV</span></button>`:''}</div><button class='b d' id='rs' onclick='resetSave()'>REINICIAR PROGRESO</button></div>`);
   const e=document.getElementById('hc');heroCtx=e?e.getContext('2d'):null;
   if(heroCtx){heroCtx.clearRect(0,0,120,120);heroCtx.save();heroCtx.translate(60,60);heroCtx.strokeStyle=s.a;heroCtx.globalAlpha=.25;heroCtx.lineWidth=1;heroCtx.beginPath();heroCtx.arc(0,0,43,0,Math.PI*2);heroCtx.stroke();heroCtx.rotate(time*.1);for(let i=0;i<6;i++){const a=i*Math.PI/3;heroCtx.beginPath();heroCtx.moveTo(Math.cos(a)*31,Math.sin(a)*31);heroCtx.lineTo(Math.cos(a)*43,Math.sin(a)*43);heroCtx.stroke()}heroCtx.restore();}
 }
@@ -743,12 +783,15 @@ function showLevels(){
   show(`<div class='pn' style='width:min(94vw,400px)'><h2 style='color:#5df6ff'>MAPA DE NIVELES</h2><div class='st'>Toca un nivel para elegirlo</div>${LV.map((l,i)=>{const L=i+1,u=unlocked(L),n=stagesOf(L),c=save.st[i];return `<button class='lv${curL===L?' on':''}${u?'':' lk'}' style='border-color:${l.a}' onclick='pickL(${L})'><b style='color:${l.a}'>${u?'':'🔒 '}${L}. ${l.n}</b><span>${n} etapas × ${wavesOf(L)} oleadas · ${Math.min(c,n)}/${n} ${L===10?'· ☠ EXTREMO':''}${u?'':' · Completa el nivel anterior'}</span></button>`}).join('')}<button class='b' onclick='showMenu()'>VOLVER</button></div>`);
 }
 function pickL(L){if(!unlocked(L))return;curL=L;showMenu()}
-function skinPreviews(){document.querySelectorAll('canvas[data-s]').forEach(cn=>{const c=cn.getContext('2d');c.clearRect(0,0,cn.width,cn.height);drawHero(c,cn.width/2,cn.height*.58,cn.width*.2,SK[+cn.dataset.s],{dx:0,bob:0,sa:1.2,t:1,shield:false})})}
-function showSkins(msg){
-  show(`<div class='pn' style='width:min(94vw,400px)'><h2 style='color:#5df6ff'>ASPECTOS</h2><div class='st'>● ${save.coins} · ${msg||'Cada skin da una mejora permanente'}</div>${SK.map((s,i)=>{const o=save.own.includes(i);return `<div class='sk${save.skin===i?' on':''}'><canvas width='80' height='80' data-s='${i}'></canvas><div class='si'><b>${s.n}</b><span>${s.t}</span></div><button class='bt ${!o&&save.coins<s.p?'no':''}' onclick='skinBtn(${i})'>${save.skin===i?'✔':o?'Usar':s.p+' ●'}</button></div>`}).join('')}<button class='b' onclick='showMenu()'>VOLVER</button></div>`);
+function skinPreviews(){document.querySelectorAll('canvas[data-s]').forEach(cn=>{const c=cn.getContext('2d');c.clearRect(0,0,cn.width,cn.height);const i=+cn.dataset.s,sk={...SK[i]};if(save.skinColors&&save.skinColors[i]){sk.a=save.skinColors[i];sk.h=save.skinColors[i];sk.c=save.skinColors[i]}drawHero(c,cn.width/2,cn.height*.58,cn.width*.2,sk,{dx:0,bob:0,sa:1.2,t:1,shield:false})})}
+function showSkins(msg,keepScroll=false){
+  const oldScroll=keepScroll?(document.querySelector('.pn')?.scrollTop||0):0;
+  show(`<div class='pn' style='width:min(94vw,400px)'><h2 style='color:#5df6ff'>ASPECTOS</h2><div class='st'>● ${save.coins} · ${msg||'Cada skin da una mejora permanente'}</div>${SK.map((s,i)=>{const o=save.own.includes(i);return `<div class='sk${save.skin===i?' on':''}'><canvas width='80' height='80' data-s='${i}'></canvas><div class='si'><b>${s.n}</b><span>${s.t}</span>${o?`<input class='colorPick' aria-label='Color de ${s.n}' type='color' value='${(save.skinColors&&save.skinColors[i])||s.a}' onchange='setSkinColor(${i},this.value)' title='Personalizar color'>`:''}</div><button class='bt ${!o&&save.coins<s.p?'no':''}' onclick='skinBtn(${i})'>${save.skin===i?'✔':o?'Usar':s.p+' ●'}</button></div>`}).join('')}<button class='b' onclick='showMenu()'>VOLVER</button></div>`);
   skinPreviews();
+  if(keepScroll)requestAnimationFrame(()=>{const pn=document.querySelector('.pn');if(pn)pn.scrollTop=oldScroll});
 }
-function skinBtn(i){const s=SK[i];if(save.own.includes(i)){save.skin=i;store();return showSkins()}if(save.coins<s.p)return showSkins('Te faltan '+(s.p-save.coins)+' monedas');save.coins-=s.p;save.own.push(i);save.skin=i;store();showSkins('¡Desbloqueada y equipada!')}
+function setSkinColor(i,color){if(!save.own.includes(i))return;save.skinColors=save.skinColors||{};save.skinColors[i]=color;store();showSkins('',true)}
+function skinBtn(i){const s=SK[i];if(save.own.includes(i)){save.skin=i;store();return showSkins('',true)}if(save.coins<s.p)return showSkins('Te faltan '+(s.p-save.coins)+' monedas');save.coins-=s.p;save.own.push(i);save.skin=i;store();showSkins('¡Desbloqueada y equipada!')}
 function giveSkin(i){if(!save.own.includes(i))save.own.push(i);save.skin=i}
 const CODES={
   ROGUE100:{t:'+100 monedas',f:()=>{save.coins+=100}},
@@ -757,6 +800,17 @@ const CODES={
   DRAGONFIRE:{t:'Skin Dragón Infernal',f:()=>giveSkin(9)},
   ECLIPSE9:{t:'+2000 monedas y skin Samurái Sombra',f:()=>{save.coins+=2000;giveSkin(7)}}
 };
+
+function showAccount(msg=''){
+  show(`<div class='pn'><h2 style='color:#5df6ff'>CUENTA</h2><div class='st'>Perfil local: vincula un correo a este navegador para identificar tu partida. Esto no sincroniza entre dispositivos sin un servidor.</div><div class='accountBox'><div class='st'>${save.email?'Sesión local: <b>'+save.email+'</b>':'No hay sesión iniciada'}</div><input id='accountEmail' class='inp' type='email' placeholder='tu@correo.com' value='${save.email||''}' autocomplete='email'><button class='b p' onclick='saveAccount()'>${save.email?'GUARDAR CORREO':'INICIAR SESIÓN LOCAL'}</button><button class='b d' onclick='logoutAccount()'>CERRAR SESIÓN</button><div class='st'>${msg}</div></div><button class='b' onclick='showMenu()'>VOLVER</button></div>`);
+}
+function saveAccount(){
+  const el=document.getElementById('accountEmail'),email=(el?.value||'').trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return showAccount('Escribe un correo válido.');
+  save.email=email;store();showAccount('Correo guardado en este dispositivo.');
+}
+function logoutAccount(){save.email='';store();showAccount('Sesión local cerrada. El progreso permanece en este dispositivo.')}
+
 function showCodes(msg){show(`<div class='pn'><h2 style='color:#5df6ff'>⌁ CÓDIGOS</h2><div class='st'>${msg||'Escribe un código para canjearlo'}</div><input id='cd' class='inp' placeholder='CÓDIGO' autocapitalize='characters' autocomplete='off' maxlength='20'><button class='b p' onclick='redeem()'>CANJEAR</button><button class='b' onclick='showMenu()'>VOLVER</button></div>`)}
 function redeem(){const c=document.getElementById('cd').value.trim().toUpperCase();if(!c)return;
   if(c==='OPTRYSAEX'){save.dev=true;store();return showCodes('🛠 ¡Modo desarrollador activado! Aparece en el menú.')}
@@ -827,6 +881,75 @@ function resize(){
   if(P.x!==undefined){P.x=clamp(P.x,0,W);P.y=clamp(P.y,0,H)}
 }
 addEventListener('resize',resize);
+
+/* ================= MULTIJUGADOR LAN (prototipo) =================
+   Esta primera versión conecta dos APK en la misma Wi-Fi y sincroniza
+   la posición/skin del otro jugador. La lógica de enemigos y daño sigue
+   siendo local; el combate cooperativo sincronizado es una fase posterior. */
+let lanConnected=false,lanStatus='Desconectado',lanRemote=null,lanLastSeen=0,lanLastSend=0;
+function showLAN(){
+  const ip=(window.RogueLAN&&window.RogueLAN.getLocalIp)?window.RogueLAN.getLocalIp():'Solo disponible en el APK';
+  show(`<div class="pn"><h2 style="color:#5df6ff">📶 ROGUE LAN</h2>
+    <div class="st">Conecta dos dispositivos a la <b>misma red Wi-Fi</b>.</div>
+    <div class="lanbox"><div class="st">IP de este dispositivo (si eres anfitrión)</div><div style="font-size:19px;font-weight:900;color:#5df6ff;word-break:break-word">${ip||'No detectada'}</div><div class="st">Puerto: 28765</div></div>
+    <button class="b p" onclick="lanHost()">CREAR PARTIDA</button>
+    <div class="st">En el otro dispositivo, escribe la IP que aparece arriba.</div>
+    <input id="lan-ip" class="laninput" inputmode="decimal" placeholder="Ej. 192.168.1.25" maxlength="45">
+    <button class="b" onclick="lanJoin()">UNIRSE A PARTIDA</button>
+    <div id="lan-status" class="st">${lanStatus}</div>
+    <div class="st" style="font-size:11px">Prototipo: permite ver al otro jugador. Los enemigos y el combate aún no están sincronizados.</div>
+    <button class="b d" onclick="lanDisconnect();showMenu()">DESCONECTAR Y VOLVER</button>
+  </div>`);
+}
+function lanSetStatus(text,connected){
+  lanStatus=text;
+  if(typeof connected==='boolean')lanConnected=connected;
+  const el=document.getElementById('lan-status');if(el)el.textContent=text;
+}
+function lanHost(){
+  if(!window.RogueLAN){lanSetStatus('Esta función requiere el APK actualizado.');return}
+  lanSetStatus('Abriendo sala…');
+  try{window.RogueLAN.startHost()}catch(e){lanSetStatus('No se pudo iniciar: '+e.message,false)}
+}
+function lanJoin(){
+  if(!window.RogueLAN){lanSetStatus('Esta función requiere el APK actualizado.');return}
+  const ip=(document.getElementById('lan-ip')||{}).value||'';
+  if(!ip.trim()){lanSetStatus('Escribe la IP del dispositivo anfitrión.');return}
+  lanSetStatus('Conectando con '+ip.trim()+'…');
+  try{window.RogueLAN.connectToHost(ip.trim())}catch(e){lanSetStatus('No se pudo conectar: '+e.message,false)}
+}
+function lanDisconnect(){
+  lanConnected=false;lanRemote=null;lanLastSeen=0;
+  if(window.RogueLAN)try{window.RogueLAN.disconnect()}catch(e){}
+  lanSetStatus('Desconectado',false);
+}
+window.onRogueLANMessage=function(raw){
+  let m;try{m=typeof raw==='string'?JSON.parse(raw):raw}catch(e){return}
+  if(m.type==='status'){
+    lanSetStatus(m.text||'Estado actualizado',!!m.connected);
+    if(m.connected)lanConnected=true;
+    return;
+  }
+  if(m.type==='player'){
+    lanRemote=m;lanLastSeen=performance.now();
+    if(m.playing&&scene==='menu'&&lanConnected){/* cada jugador inicia su partida localmente */}
+  }
+};
+setInterval(()=>{
+  if(!lanConnected||!window.RogueLAN||!P||P.x===undefined)return;
+  const now=performance.now();if(now-lanLastSend<100)return;lanLastSend=now;
+  try{window.RogueLAN.sendMessage(JSON.stringify({type:'player',x:P.x/Math.max(1,W),y:P.y/Math.max(1,H),playing:scene==='play',skin:save.skin,name:'Jugador',color:SK[save.skin].a}))}catch(e){}
+},50);
+function drawLanPlayer(){
+  if(!lanConnected||!lanRemote||performance.now()-lanLastSeen>3000||!lanRemote.playing||scene!=='play')return;
+  const x=clamp(+lanRemote.x||0,0,1)*W,y=clamp(+lanRemote.y||0,0,1)*H;
+  const skin=SK[Number.isInteger(+lanRemote.skin)&&SK[+lanRemote.skin]?+lanRemote.skin:0]||SK[0];
+  drawHero(ctx,x,y,CFG.player.r*U,skin,{dx:0,bob:Math.sin(time*5)*2*U,sa:time,flash:false,shield:false,t:time});
+  ctx.save();ctx.font='800 '+Math.max(10,11*U)+'px system-ui';ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.fillStyle='#06101b';ctx.fillText('OTRO JUGADOR',x+1,y-CFG.player.r*U*1.5+1);
+  ctx.fillStyle=lanRemote.color||skin.a;ctx.fillText('OTRO JUGADOR',x,y-CFG.player.r*U*1.5);ctx.restore();
+}
+
 function loop(t){
   requestAnimationFrame(loop);
   const dt=Math.min(.05,(t-last)/1000||0);last=t; // 'last' se actualiza siempre: no acumula tiempo al pausar
